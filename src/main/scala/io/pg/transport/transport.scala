@@ -18,7 +18,8 @@ final case class MergeRequestState(
   authorUsername: String,
   description: Option[String],
   status: MergeRequestState.Status,
-  mergeability: MergeRequestState.Mergeability
+  mergeability: MergeRequestState.Mergeability,
+  headSha: Option[String]
 )
 
 object MergeRequestState {

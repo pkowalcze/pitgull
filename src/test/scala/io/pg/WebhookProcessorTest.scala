@@ -97,6 +97,8 @@ object WebhookProcessorTest extends SimpleIOSuite {
   testWithResources("known project with one mergeable MR and one rebaseable MR") { resources =>
     import resources._
     val projectId = 66L
+    val headSha1 = None
+    val headSha2 = None
 
     val project = Project(projectId)
 
@@ -114,9 +116,9 @@ object WebhookProcessorTest extends SimpleIOSuite {
       (mergeRequestsAfterProcess2, logAfterProcess2) <- perform
       (mergeRequestsAfterProcess3, logAfterProcess3) <- perform
     } yield {
-      val merge1 = ProjectAction.Merge(projectId, mr1)
+      val merge1 = ProjectAction.Merge(projectId, mr1, headSha1)
       val rebase2 = ProjectAction.Rebase(projectId, mr2)
-      val merge2 = ProjectAction.Merge(projectId, mr2)
+      val merge2 = ProjectAction.Merge(projectId, mr2, headSha2)
 
       val firstMerged = expect(mergeRequestsAfterProcess1.map(_.mergeRequestIid) == List(mr2)) &&
         expect(logAfterProcess1 == List(merge1))

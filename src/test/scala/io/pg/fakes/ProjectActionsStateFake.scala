@@ -126,7 +126,8 @@ object ProjectActionsStateFake {
           authorUsername = authorUsername,
           description = description,
           status = MergeRequestInfo.Status.Other("Created"),
-          mergeability = Mergeability.CanMerge
+          mergeability = Mergeability.CanMerge,
+          headSha = None
         )
 
         Data[F].modify {

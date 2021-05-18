@@ -33,7 +33,7 @@ object ProjectActions {
   def defaultResolve[F[_]: Applicative: Logger](mr: MergeRequestState): F[Option[ProjectAction]] = mr.mergeability match {
     case CanMerge =>
       ProjectAction
-        .Merge(projectId = mr.projectId, mergeRequestIid = mr.mergeRequestIid)
+        .Merge(projectId = mr.projectId, mergeRequestIid = mr.mergeRequestIid, headSha = mr.headSha)
         .some
         .widen[ProjectAction]
         .pure[F]
@@ -64,7 +64,7 @@ object ProjectActions {
       val logBefore = Logger[F].info("About to execute action", Map("action" -> action.toString))
 
       val approve = action match {
-        case Merge(projectId, mergeRequestIid) =>
+        case Merge(projectId, mergeRequestIid, _) =>
           Logger[F].info("Forcing approval befor merge", Map("action" -> action.toString)) *>
             Gitlab[F].forceApprove(projectId, mergeRequestIid)
         case _                                 =>
@@ -75,8 +75,8 @@ object ProjectActions {
         //todo: perform check is the MR still open?
         //or fall back in case it's not
         //https://www.youtube.com/watch?v=vxKBHX9Datw
-        case Merge(projectId, mergeRequestIid) =>
-          Gitlab[F].acceptMergeRequest(projectId, mergeRequestIid)
+        case Merge(projectId, mergeRequestIid, headSha) =>
+          Gitlab[F].acceptMergeRequestGraphQL(projectId.toString, mergeRequestIid, headSha)
 
         case Rebase(projectId, mergeRequestIid) =>
           Gitlab[F].rebaseMergeRequest(projectId, mergeRequestIid)
@@ -213,6 +213,6 @@ object ProjectActions {
 sealed trait ProjectAction extends Product with Serializable
 
 object ProjectAction {
-  final case class Merge(projectId: Long, mergeRequestIid: Long) extends ProjectAction
+  final case class Merge(projectId: Long, mergeRequestIid: Long, headSha: Option[String]) extends ProjectAction
   final case class Rebase(projectId: Long, mergeRequestIid: Long) extends ProjectAction
 }

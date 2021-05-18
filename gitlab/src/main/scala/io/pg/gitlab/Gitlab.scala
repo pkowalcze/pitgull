@@ -16,6 +16,9 @@ import io.pg.gitlab.GitlabEndpoints.transport.ApprovalRule
 import io.pg.gitlab.graphql.MergeRequest
 import io.pg.gitlab.graphql.MergeRequestConnection
 import io.pg.gitlab.graphql.MergeRequestState
+import io.pg.gitlab.graphql.Mutation
+import io.pg.gitlab.graphql.MergeRequestAcceptInput
+import io.pg.gitlab.graphql.MergeRequestAcceptPayload
 import io.pg.gitlab.graphql.Pipeline
 import io.pg.gitlab.graphql.PipelineStatusEnum
 import io.pg.gitlab.graphql.Project
@@ -41,6 +44,7 @@ import io.pg.TextUtils
 trait Gitlab[F[_]] {
   def mergeRequests(projectId: Long): F[List[MergeRequestInfo]]
   def acceptMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit]
+  def acceptMergeRequestGraphQL(projectId: String, mergeRequestIid: Long, headSha: Option[String]): F[Unit]
   def rebaseMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit]
   def forceApprove(projectId: Long, mergeRequestIid: Long): F[Unit]
 }
@@ -58,7 +62,8 @@ object Gitlab {
     authorUsername: String,
     description: Option[String],
     needsRebase: Boolean,
-    hasConflicts: Boolean
+    hasConflicts: Boolean,
+    headSha: Option[String]
   )
 
   object MergeRequestInfo {
@@ -103,6 +108,7 @@ object Gitlab {
       runRequest(a.toRequest(baseUri.addPath("api", "graphql"))).rethrow
 
     new Gitlab[F] {
+
       def mergeRequests(projectId: Long): F[List[MergeRequestInfo]] =
         Logger[F].info(
           "Finding merge requests",
@@ -143,7 +149,8 @@ object Gitlab {
             .mapEither(_.toRight(DecodingError("MR has no author"))) ~
           MergeRequest.description ~
           MergeRequest.shouldBeRebased ~
-          MergeRequest.conflicts
+          MergeRequest.conflicts ~
+          MergeRequest.diffHeadSha
       ).mapN((buildMergeRequest(projectId) _))
 
       private def buildMergeRequest(
@@ -154,7 +161,8 @@ object Gitlab {
         authorUsername: String,
         description: Option[String],
         needsRebase: Boolean,
-        hasConflicts: Boolean
+        hasConflicts: Boolean,
+        headSha: Option[String]
       ): MergeRequestInfo = MergeRequestInfo(
         projectId = projectId,
         mergeRequestIid = mergeRequestIid,
@@ -162,7 +170,8 @@ object Gitlab {
         authorUsername = authorUsername,
         description = description,
         needsRebase = needsRebase,
-        hasConflicts = hasConflicts
+        hasConflicts = hasConflicts,
+        headSha = headSha
       )
 
       private val convertPipelineStatus: PipelineStatusEnum => MergeRequestInfo.Status = {
@@ -174,6 +183,14 @@ object Gitlab {
         runInfallibleEndpoint(GitlabEndpoints.acceptMergeRequest)
           .apply((projectId, mergeRequestIid))
           .void
+
+      def acceptMergeRequestGraphQL(projectId: String, mergeRequestIid: Long, headSha: Option[String]): F[Unit] = {
+        val input: MergeRequestAcceptInput = MergeRequestAcceptInput(projectPath = projectId, mergeRequestIid.toString, sha = "")
+        val selection: SelectionBuilder[MergeRequestAcceptPayload, Unit] = ???
+        val query = Mutation.mergeRequestAccept(input)(selection)
+        // runGraphQLQuery(query)
+        ???
+      }
 
       def rebaseMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit] =
         runInfallibleEndpoint(GitlabEndpoints.rebaseMergeRequest)
