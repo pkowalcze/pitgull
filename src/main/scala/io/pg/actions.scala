@@ -76,7 +76,7 @@ object ProjectActions {
         //or fall back in case it's not
         //https://www.youtube.com/watch?v=vxKBHX9Datw
         case Merge(projectId, mergeRequestIid, headSha) =>
-          Gitlab[F].acceptMergeRequestGraphQL(projectId.toString, mergeRequestIid, headSha)
+          Gitlab[F].acceptMergeRequest(projectId.toString, mergeRequestIid, headSha)
 
         case Rebase(projectId, mergeRequestIid) =>
           Gitlab[F].rebaseMergeRequest(projectId, mergeRequestIid)

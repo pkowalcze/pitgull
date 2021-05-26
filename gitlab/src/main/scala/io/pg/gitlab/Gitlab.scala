@@ -44,8 +44,7 @@ import caliban.client.Operations
 @finalAlg
 trait Gitlab[F[_]] {
   def mergeRequests(projectId: Long): F[List[MergeRequestInfo]]
-  def acceptMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit]
-  def acceptMergeRequestGraphQL(projectId: String, mergeRequestIid: Long, headSha: Option[String]): F[Unit]
+  def acceptMergeRequest(projectId: String, mergeRequestIid: Long, headSha: Option[String]): F[Unit]
   def rebaseMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit]
   def forceApprove(projectId: Long, mergeRequestIid: Long): F[Unit]
 }
@@ -180,14 +179,7 @@ object Gitlab {
         case other                      => MergeRequestInfo.Status.Other(other.toString)
       }
 
-      def acceptMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit] =
-        runInfallibleEndpoint(GitlabEndpoints.acceptMergeRequest)
-          .apply((projectId, mergeRequestIid))
-          .void
-
-      final case object MergeRequestNotAccepted
-
-      def acceptMergeRequestGraphQL(
+      def acceptMergeRequest(
         projectId: String,
         mergeRequestIid: Long,
         headSha: Option[String]
@@ -253,14 +245,6 @@ object GitlabEndpoints {
   import sttp.tapir._
 
   private val baseEndpoint = infallibleEndpoint.in("api" / "v4")
-
-  val acceptMergeRequest: Endpoint[(Long, Long), Nothing, Unit, Any] =
-    baseEndpoint
-      //hehe putin
-      .put
-      .in("projects" / path[Long]("projectId"))
-      .in("merge_requests" / path[Long]("merge_request_iid"))
-      .in("merge")
 
   val rebaseMergeRequest: Endpoint[(Long, Long), Nothing, Unit, Any] =
     baseEndpoint
