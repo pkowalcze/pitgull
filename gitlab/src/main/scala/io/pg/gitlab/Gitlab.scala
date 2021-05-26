@@ -39,6 +39,7 @@ import io.pg.gitlab.GitlabEndpoints.transport.MergeRequestApprovals
 import monocle.macros.Lenses
 import cats.Show
 import io.pg.TextUtils
+import caliban.client.Operations
 
 @finalAlg
 trait Gitlab[F[_]] {
@@ -184,12 +185,21 @@ object Gitlab {
           .apply((projectId, mergeRequestIid))
           .void
 
-      def acceptMergeRequestGraphQL(projectId: String, mergeRequestIid: Long, headSha: Option[String]): F[Unit] = {
-        val input: MergeRequestAcceptInput = MergeRequestAcceptInput(projectPath = projectId, mergeRequestIid.toString, sha = "")
-        val selection: SelectionBuilder[MergeRequestAcceptPayload, Unit] = ???
-        val query = Mutation.mergeRequestAccept(input)(selection)
-        // runGraphQLQuery(query)
-        ???
+      final case object MergeRequestNotAccepted
+
+      def acceptMergeRequestGraphQL(
+        projectId: String,
+        mergeRequestIid: Long,
+        headSha: Option[String]
+      ): F[Unit] = {
+        val input: MergeRequestAcceptInput =
+          MergeRequestAcceptInput(projectPath = projectId, mergeRequestIid.toString, sha = headSha.get) //FIXME unsafe get
+        val query: SelectionBuilder[Operations.RootMutation, Unit] =
+          Mutation
+            .mergeRequestAccept(input)(MergeRequestAcceptPayload.mergeRequest(SelectionBuilder.pure(())))
+            .map(_.flatten)
+            .mapEither(_.toRight(DecodingError("Merge request not found")))
+        runGraphQLQuery(query)
       }
 
       def rebaseMergeRequest(projectId: Long, mergeRequestIid: Long): F[Unit] =
